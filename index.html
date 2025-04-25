@@ -238,7 +238,6 @@
             try {
             const response = await fetch(chatApiUrl, {
                 method: "POST",
-                mode: "no-cors",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                 whatsapp: {
