@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp & Customer Support Widget</title>
+    <style>
+      #support-widget {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 9999;
+      }
+    
+      #support-button {
+        background-color: #25D366;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        font-size: 28px;
+        cursor: pointer;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      }
+    
+      #support-popup {
+        display: none;
+        position: absolute;
+        bottom: 70px;
+        right: 0;
+        width: 300px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+        padding: 15px;
+      }
+    
+      .widget-btn {
+        display: block;
+        width: 100%;
+        margin: 10px 0;
+        padding: 10px;
+        background: #f1f1f1;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      
+      .widget-btn:hover {
+        background: #e0e0e0;
+      }
+    
+      #number-input, #chat-box {
+        display: none;
+        margin-top: 10px;
+      }
+    
+      #chat-messages {
+        height: 150px;
+        overflow-y: auto;
+        border: 1px solid #ccc;
+        padding: 8px;
+        font-size: 14px;
+        background: #fafafa;
+        margin-bottom: 8px;
+        border-radius: 5px;
+      }
+      
+      .message-bubble {
+        padding: 6px 10px;
+        border-radius: 10px;
+        margin-bottom: 8px;
+        max-width: 80%;
+        word-wrap: break-word;
+      }
+      
+      .user-message {
+        background-color: #DCF8C6;
+        margin-left: auto;
+        margin-right: 0;
+      }
+      
+      .bot-message {
+        background-color: #F1F0F0;
+        margin-right: auto;
+        margin-left: 0;
+      }
+      
+      .system-message {
+        text-align: center;
+        color: #888;
+        font-style: italic;
+        margin: 5px 0;
+      }
+      
+      #mode-selector {
+        margin-bottom: 10px;
+        font-size: 14px;
+      }
+      
+      select {
+        width: 100%;
+        padding: 5px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+      }
+    </style>
+</head>
+<body>
+    <div id="support-widget">
+      <button id="support-button">💬</button>
+      <div id="support-popup">
+        <button class="widget-btn" id="whatsapp-btn">Chat on WhatsApp</button>
+        <button class="widget-btn" id="support-btn">Customer Support</button>
+    
+        <div id="number-input">
+          <input type="text" id="user-phone" placeholder="Enter your phone number" style="width: 100%; padding: 8px; margin-bottom: 5px; border-radius: 5px; border: 1px solid #ccc;">
+          <div id="mode-selector">
+            <select id="chat-mode">
+              <option value="demo">Demo Mode (Simulated Responses)</option>
+              <option value="api">API Mode (Direct API Access)</option>
+            </select>
+          </div>
+          <button class="widget-btn" id="start-chat">Start Chat</button>
+        </div>
+    
+        <div id="chat-box">
+          <div id="chat-messages"></div>
+          <input type="text" id="user-message" placeholder="Type your message..." style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ccc; margin-bottom: 5px;">
+          <button class="widget-btn" id="send-message">Send</button>
+        </div>
+      </div>
+    </div>
+    
+    <script>
+      const supportButton = document.getElementById("support-button");
+      const popup = document.getElementById("support-popup");
+      const whatsappBtn = document.getElementById("whatsapp-btn");
+      const supportBtn = document.getElementById("support-btn");
+      const numberInput = document.getElementById("number-input");
+      const chatBox = document.getElementById("chat-box");
+      const startChatBtn = document.getElementById("start-chat");
+      const sendMessageBtn = document.getElementById("send-message");
+      const chatMessages = document.getElementById("chat-messages");
+      const chatModeSelect = document.getElementById("chat-mode");
+      const supportWidget = document.getElementById("support-widget");
+    
+      let userPhone = "";
+      let chatMode = "demo"; // Default to demo mode
+      const sessionId = Date.now().toString();
+      const chatApiUrl = 'https://whatsapp-chatbot-167059925489.asia-south1.run.app/chat';
+    
+      supportButton.onclick = () => {
+        popup.style.display = popup.style.display === "block" ? "none" : "block";
+      };
+    
+      whatsappBtn.onclick = () => {
+        window.open("https://wa.me/919967123333", "_blank");
+      };
+    
+      supportBtn.onclick = () => {
+        numberInput.style.display = "block";
+      };
+      
+      chatModeSelect.onchange = () => {
+        chatMode = chatModeSelect.value;
+      };
+    
+      startChatBtn.onclick = () => {
+        const phone = document.getElementById("user-phone").value;
+        if (!phone) return alert("Please enter your phone number.");
+        userPhone = phone;
+        chatMode = chatModeSelect.value;
+        
+        chatBox.style.display = "block";
+        numberInput.style.display = "none";
+        
+        // Add system message with chat mode
+        addMessage(`Chat started with ${userPhone} (${chatMode === 'demo' ? 'Demo Mode' : 'API Mode'})`, 'system');
+        
+        // Send a welcome message based on the mode
+        setTimeout(() => {
+          if (chatMode === 'demo') {
+            addMessage("Hello! This is a demo mode with simulated responses. How can I help you today?", 'bot');
+          } else {
+            addMessage("Hello! I'm connected to the WhatsApp chatbot API. How can I help you?", 'bot');
+          }
+        }, 1000);
+      };
+      
+      // Function to add messages to the chat with proper styling
+      function addMessage(text, type) {
+        const messageDiv = document.createElement('div');
+        
+        if (type === 'system') {
+          messageDiv.className = 'system-message';
+          messageDiv.innerText = text;
+        } else {
+          const messageBubble = document.createElement('div');
+          messageBubble.className = `message-bubble ${type === 'user' ? 'user-message' : 'bot-message'}`;
+          
+          if (type === 'user') {
+            messageBubble.innerHTML = `<strong>You:</strong> ${text}`;
+          } else {
+            messageBubble.innerHTML = `<strong>Bot:</strong> ${text}`;
+          }
+          
+          messageDiv.appendChild(messageBubble);
+        }
+        
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+    
+      // Simulated bot responses for demo mode
+      const simulatedResponses = {
+        general: [
+          "Hello! How can I help you today?",
+          "I understand. Let me check that for you.",
+          "Thanks for your message. Our team will get back to you soon.",
+          "Could you provide more details about your inquiry?",
+          "Is there anything else you'd like to know?"
+        ],
+        cancer: [
+          "Cancer wigs are specially designed hairpieces for individuals who have lost hair due to cancer treatments such as chemotherapy. They provide comfort, confidence, and a sense of normalcy during treatment.",
+          "We offer a variety of cancer wigs made from different materials including synthetic fibers and natural human hair. Would you like more information about specific types?",
+          "Our cancer wig services include professional fitting, styling, and maintenance advice to ensure you get the most comfortable and natural-looking results."
+        ],
+        product: [
+          "We have a wide range of products available. Could you specify what you're looking for?",
+          "Our most popular products include our premium collection. Would you like to know more about specific items?",
+          "All our products come with a satisfaction guarantee. Let me know if you'd like details about pricing and availability."
+        ]
+      };
+      
+      const getSimulatedResponse = (message) => {
+        // Check message content to provide more relevant responses
+        const lowerMsg = message.toLowerCase();
+        
+        if (lowerMsg.includes('cancer') || lowerMsg.includes('wig')) {
+          return simulatedResponses.cancer[Math.floor(Math.random() * simulatedResponses.cancer.length)];
+        } else if (lowerMsg.includes('product') || lowerMsg.includes('item') || lowerMsg.includes('buy')) {
+          return simulatedResponses.product[Math.floor(Math.random() * simulatedResponses.product.length)];
+        } else {
+          return simulatedResponses.general[Math.floor(Math.random() * simulatedResponses.general.length)];
+        }
+      };
+    
+      sendMessageBtn.onclick = async () => {
+        const message = document.getElementById("user-message").value.trim();
+        if (!message) return;
+    
+        addMessage(message, 'user');
+        document.getElementById("user-message").value = "";
+        
+        // If in demo mode, use simulated responses
+        if (chatMode === 'demo') {
+          setTimeout(() => {
+            const simulatedResponse = getSimulatedResponse(message);
+            addMessage(simulatedResponse, 'bot');
+          }, 1000);
+          return;
+        }
+        
+        // Show typing indicator
+        const typingIndicator = document.createElement('div');
+        typingIndicator.className = 'system-message';
+        typingIndicator.id = 'typing-indicator';
+        typingIndicator.innerText = 'Bot is typing...';
+        chatMessages.appendChild(typingIndicator);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        try {
+          // Direct API call (requires CORS to be enabled on server)
+          const response = await fetch(chatApiUrl, {
+            method: "POST",
+            headers: { 
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              whatsapp: {
+                from: "WEB-USER-" + userPhone,
+                text: { body: message }
+              }
+            })
+          });
+          
+          // Remove typing indicator
+          document.getElementById('typing-indicator')?.remove();
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            if (data.status === 'success' && data.data && data.data.messages.length > 0) {
+              addMessage(data.data.messages[0].text, 'bot');
+            } else {
+              throw new Error("Invalid response format");
+            }
+          } else {
+            throw new Error("API request failed");
+          }
+          
+        } catch (error) {
+          console.error('Error:', error);
+          
+          // Remove typing indicator if it exists
+          document.getElementById('typing-indicator')?.remove();
+          
+          // Add error message and fallback to demo response
+          addMessage("Failed to connect to the API. Falling back to demo mode.", 'system');
+          setTimeout(() => {
+            addMessage(getSimulatedResponse(message), 'bot');
+          }, 1000);
+        }
+      };
+
+      // Add event listener for Enter key in the message input
+      document.getElementById("user-message").addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+          sendMessageBtn.click();
+        }
+      });
+      
+      // Close popup when clicking outside
+      document.addEventListener('click', function(event) {
+        const isClickInsideWidget = document.getElementById("support-widget").contains(event.target);
+        if (!isClickInsideWidget && popup.style.display === 'block' && event.target !== supportButton) {
+          popup.style.display = 'none';
+        }
+      });
+      
+      // Prevent closing when clicking inside the popup
+      popup.addEventListener('click', function(event) {
+        event.stopPropagation();
+      });
+    </script>
+</body>
+</html>
