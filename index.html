@@ -1,0 +1,296 @@
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>WhatsApp & Customer Support Widget</title>
+        <style>
+        #support-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        #support-button {
+            background-color: #25D366;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-size: 28px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        #support-popup {
+            display: none;
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            width: 300px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+            padding: 15px;
+        }
+
+        .widget-btn {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 10px;
+            background: #f1f1f1;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .widget-btn:hover {
+            background: #e0e0e0;
+        }
+
+        #number-input, #chat-box {
+            display: none;
+            margin-top: 10px;
+        }
+
+        #chat-messages {
+            height: 150px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 8px;
+            font-size: 14px;
+            background: #fafafa;
+            margin-bottom: 8px;
+            border-radius: 5px;
+        }
+
+        .message-bubble {
+            padding: 6px 10px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            background-color: #DCF8C6;
+            margin-left: auto;
+            margin-right: 0;
+        }
+
+        .bot-message {
+            background-color: #F1F0F0;
+            margin-right: auto;
+            margin-left: 0;
+        }
+
+        .system-message {
+            text-align: center;
+            color: #888;
+            font-style: italic;
+            margin: 5px 0;
+        }
+
+        .quick-replies {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .quick-reply {
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .quick-reply:hover {
+            background: #e0f0ff;
+            border-color: #007aff;
+        }
+        </style>
+    </head>
+    <body>
+        <div id="support-widget">
+        <button id="support-button">💬</button>
+        <div id="support-popup">
+            <button class="widget-btn" id="whatsapp-btn">Chat on WhatsApp</button>
+            <button class="widget-btn" id="support-btn">Customer Support</button>
+
+            <div id="number-input">
+            <input type="text" id="user-phone" placeholder="Enter your phone number" style="width: 100%; padding: 8px; margin-bottom: 5px; border-radius: 5px; border: 1px solid #ccc;">
+            <button class="widget-btn" id="start-chat">Start Chat</button>
+            </div>
+
+            <div id="chat-box">
+            <div id="chat-messages"></div>
+            <input type="text" id="user-message" placeholder="Type your message..." style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ccc; margin-bottom: 5px;">
+            <button class="widget-btn" id="send-message">Send</button>
+            </div>
+        </div>
+        </div>
+
+        <script>
+        const supportButton = document.getElementById("support-button");
+        const popup = document.getElementById("support-popup");
+        const whatsappBtn = document.getElementById("whatsapp-btn");
+        const supportBtn = document.getElementById("support-btn");
+        const numberInput = document.getElementById("number-input");
+        const chatBox = document.getElementById("chat-box");
+        const startChatBtn = document.getElementById("start-chat");
+        const sendMessageBtn = document.getElementById("send-message");
+        const chatMessages = document.getElementById("chat-messages");
+
+        let userPhone = "";
+        const chatApiUrl = 'https://whatsapp-chatbot-167059925489.asia-south1.run.app/chat';
+        const sessionId = Date.now().toString();
+
+        supportButton.onclick = () => {
+            popup.style.display = popup.style.display === "block" ? "none" : "block";
+        };
+
+        whatsappBtn.onclick = () => {
+            window.open("https://wa.me/919967123333", "_blank");
+        };
+
+        supportBtn.onclick = () => {
+            numberInput.style.display = "block";
+        };
+
+        startChatBtn.onclick = () => {
+            const phone = document.getElementById("user-phone").value;
+            if (!phone) return alert("Please enter your phone number.");
+            userPhone = phone;
+
+            chatBox.style.display = "block";
+            numberInput.style.display = "none";
+
+            addMessage(`Chat started with ${userPhone}`, 'system');
+            addMessage("Hello! I'm connected to the WhatsApp chatbot API. How can I help you?", 'bot');
+        };
+
+        function addMessage(text, type) {
+            const messageDiv = document.createElement('div');
+
+            if (type === 'system') {
+            messageDiv.className = 'system-message';
+            messageDiv.innerText = text;
+            } else {
+            const messageBubble = document.createElement('div');
+            messageBubble.className = `message-bubble ${type === 'user' ? 'user-message' : 'bot-message'}`;
+            messageBubble.innerHTML = `<strong>${type === 'user' ? 'You' : 'Bot'}:</strong> ${text}`;
+            messageDiv.appendChild(messageBubble);
+            }
+
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function addQuickRepliesIfNeeded(botResponse) {
+            const quickRepliesDiv = document.createElement('div');
+            quickRepliesDiv.className = 'quick-replies';
+
+            let replies = [];
+            const lower = botResponse.toLowerCase();
+
+            if (lower.includes("hair system")) {
+            replies = ["Lace Systems", "Poly Systems", "Hybrid Systems"];
+            } else if (lower.includes("price") || lower.includes("cost")) {
+            replies = ["Book Consultation", "Hair System Types"];
+            } else if (lower.includes("consultation")) {
+            replies = ["Schedule Now", "Cost Details"];
+            }
+
+            replies.forEach(reply => {
+            const btn = document.createElement('div');
+            btn.className = 'quick-reply';
+            btn.innerText = reply;
+            btn.onclick = () => sendMessage(reply);
+            quickRepliesDiv.appendChild(btn);
+            });
+
+            const lastBot = document.querySelectorAll('.bot-message');
+            const last = lastBot[lastBot.length - 1];
+            if (last) last.appendChild(quickRepliesDiv);
+        }
+
+        async function sendMessage(message) {
+            if (!message) return;
+
+            addMessage(message, 'user');
+            document.getElementById("user-message").value = "";
+
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'system-message';
+            typingIndicator.id = 'typing-indicator';
+            typingIndicator.innerText = 'Bot is typing...';
+            chatMessages.appendChild(typingIndicator);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            try {
+            const response = await fetch(chatApiUrl, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                whatsapp: {
+                    from: "WEB-USER-" + userPhone,
+                    text: { body: message }
+                }
+                })
+            });
+
+            document.getElementById('typing-indicator')?.remove();
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.status === 'success' && data.data && data.data.messages.length > 0) {
+                const botText = data.data.messages[0].text;
+                addMessage(botText, 'bot');
+                addQuickRepliesIfNeeded(botText);
+                } else {
+                throw new Error("Invalid response format");
+                }
+            } else {
+                throw new Error("API request failed");
+            }
+
+            } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('typing-indicator')?.remove();
+            addMessage("Server error. Please try again later.", 'bot');
+            }
+        }
+
+        document.getElementById("send-message").addEventListener("click", () => {
+            const msg = document.getElementById("user-message").value.trim();
+            sendMessage(msg);
+        });
+
+        document.getElementById("user-message").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+            document.getElementById("send-message").click();
+            }
+        });
+
+        document.addEventListener('click', function(event) {
+            const isClickInsideWidget = document.getElementById("support-widget").contains(event.target);
+            if (!isClickInsideWidget && popup.style.display === 'block' && event.target !== supportButton) {
+            popup.style.display = 'none';
+            }
+        });
+
+        popup.addEventListener('click', function(event) {
+            event.stopPropagation();
+        });
+        </script>
+    </body>
+    </html>
